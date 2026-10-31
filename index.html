@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>英文進擊者 Attacker of English</title>
+  <meta name="description" content="以《藍色監獄》為靈感的 3D 前鋒挑戰，掌握英文 12 種時態。">
+  <meta name="theme-color" content="#060b1a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- WELCOME -->
+  <section id="view-welcome" class="view">
+    <div class="welcome">
+      <div class="lock-mark" aria-hidden="true"><span></span></div>
+      <p class="eyebrow">藍色監獄 · 英文特訓計畫</p>
+      <h1 class="title-xl">Attacker<br>of <em>English</em></h1>
+      <p class="title-zh">英文進擊者</p>
+      <p class="lead">300 名前鋒入營，只有一人能成為世界第一。<br>你的武器：英文的 12 種時態。</p>
+      <form id="welcome-form" class="welcome-form" autocomplete="off">
+        <label for="striker-name">你的前鋒名稱</label>
+        <div class="row">
+          <input id="striker-name" maxlength="18" placeholder="例如：世一" required>
+          <button class="btn btn-primary" type="submit">進入藍色監獄</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- HOME / FACILITY MAP -->
+  <section id="view-home" class="view">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"></span>Attacker <em>of English</em></div>
+      <button class="icon-btn" id="btn-settings" aria-label="設定">⚙</button>
+    </header>
+    <main class="container">
+      <div class="profile-card">
+        <div class="rank">
+          <span class="rank-label">藍色監獄排名</span>
+          <span class="rank-num" id="rank-num">#300</span>
+        </div>
+        <div class="profile-meta">
+          <h2 id="profile-name">前鋒</h2>
+          <p id="profile-title" class="muted">未排名的利己主義者</p>
+          <div class="progress"><div id="progress-bar"></div></div>
+          <div class="stat-row">
+            <span>已通關 <b id="stat-cleared">0</b>/12</span>
+            <span><b id="stat-stars">0</b>/36 ★</span>
+            <span><b id="stat-ego">0</b> 自我點數</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="filter-group" role="group" aria-label="依時態分類篩選">
+          <span class="filter-label">時態</span>
+          <div class="chips" id="filter-category"></div>
+        </div>
+        <div class="filter-group" role="group" aria-label="依完成狀態篩選">
+          <span class="filter-label">狀態</span>
+          <div class="chips" id="filter-status"></div>
+        </div>
+      </div>
+
+      <div id="level-grid" class="level-grid"></div>
+      <p id="empty-state" class="empty" hidden>沒有符合篩選條件的關卡。</p>
+    </main>
+  </section>
+
+  <!-- COURSE -->
+  <section id="view-course" class="view">
+    <header class="topbar">
+      <button class="icon-btn" data-nav="home" aria-label="返回">←</button>
+      <div class="topbar-title" id="course-topbar">關卡</div>
+      <button class="zh-toggle" data-zh-toggle aria-pressed="false"><span class="dot"></span>中譯</button>
+    </header>
+    <main class="container narrow" id="course-body"></main>
+  </section>
+
+  <!-- MATCH -->
+  <section id="view-match" class="view view-match">
+    <div id="stage" class="match-stage"></div>
+    <div class="hud">
+      <div class="hud-left">
+        <button class="icon-btn" id="btn-quit" aria-label="離開比賽">✕</button>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-level">LV 1</span>
+          <span class="hearts" id="hud-hearts"></span>
+        </div>
+      </div>
+      <div class="hud-score"><span id="hud-goals">0</span><small>/<span id="hud-need">3</span> 進球</small></div>
+      <div class="hud-right">
+        <div class="hud-block right">
+          <span class="hud-label">心流 FLOW</span>
+          <div class="flow"><div id="hud-flow"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="match-hint">盤球衝進禁區 · 在「對決」中突破後衛 · 答對題目就能「射門」</div>
+    <div class="flash" id="flash"></div>
+    <div class="joystick" id="joystick" aria-hidden="true"><div class="knob"></div></div>
+    <div class="nogl" id="nogl" hidden>
+      <p>無法啟動 3D 畫面（不支援 WebGL 或目前離線）。請檢查網路連線後重新整理。</p>
+      <button class="btn" data-nav="home">返回地圖</button>
+    </div>
+  </section>
+
+  <!-- QUESTION MODAL -->
+  <div class="modal" id="question-modal" hidden>
+    <div class="question-card" role="dialog" aria-modal="true" aria-labelledby="qm-sentence">
+      <div class="qm-head">
+        <span class="qm-kind" id="qm-kind">對決！</span>
+        <span class="qm-tense" id="qm-tense"></span>
+      </div>
+      <div class="timer"><div id="qm-timer"></div></div>
+      <div id="qm-sentence"></div>
+      <div class="options" id="qm-options"></div>
+      <div class="qm-foot">
+        <p class="qm-feedback" id="qm-feedback"></p>
+        <button class="zh-toggle" data-zh-toggle aria-pressed="false"><span class="dot"></span>中譯</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT / SETTINGS MODAL -->
+  <div class="modal" id="dialog" hidden>
+    <div class="dialog-card" id="dialog-card" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/data-zh.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
