@@ -2,6 +2,7 @@
 (function () {
   const { LEVELS, CATEGORIES, STATUSES } = window.AOE_DATA;
   const Store = window.AOE_Store;
+  const Avatars = window.AOE_AVATARS;
   const $ = s => document.querySelector(s);
   const DRILLS = 3;
   const GOALS_NEEDED = 3;
@@ -73,12 +74,31 @@
     if (nav) go('#/' + nav.dataset.nav);
   });
 
+  // ---------- Avatars ----------
+  function avatarPickerHtml(selected) {
+    return Avatars.list.map(a =>
+      `<button type="button" class="avatar-option" role="radio" data-avatar="${a.id}" aria-checked="${a.id === selected}" title="${a.name}">
+        <span class="avatar-img">${a.html()}</span><span class="avatar-name">${a.name}</span>
+      </button>`).join('');
+  }
+  const pickedAvatar = root => {
+    const b = root.querySelector('[data-avatar][aria-checked="true"]');
+    return b ? b.dataset.avatar : Store.get().avatar;
+  };
+  document.addEventListener('click', e => {
+    const opt = e.target.closest('[data-avatar]');
+    if (!opt) return;
+    opt.parentElement.querySelectorAll('[data-avatar]').forEach(b => b.setAttribute('aria-checked', b === opt));
+  });
+
   // ---------- Welcome ----------
+  $('#welcome-avatars').innerHTML = avatarPickerHtml(Store.get().avatar);
   $('#welcome-form').addEventListener('submit', e => {
     e.preventDefault();
     const name = $('#striker-name').value.trim();
     if (!name) return;
-    Store.update(s => { s.name = name; });
+    const avatar = pickedAvatar($('#welcome-avatars'));
+    Store.update(s => { s.name = name; s.avatar = avatar; });
     go('#/home');
   });
 
@@ -92,6 +112,9 @@
     const cleared = Store.clearedCount();
     const stars = LEVELS.reduce((n, l) => n + (s.levels[l.id] ? s.levels[l.id].stars : 0), 0);
     $('#profile-name').textContent = s.name;
+    const av = Avatars.byId(s.avatar);
+    $('#profile-avatar').innerHTML = av.html();
+    $('#profile-avatar').title = `${av.name} · 更換頭像`;
     $('#profile-title').textContent = RANK_TITLES[cleared];
     $('#rank-num').textContent = '#' + Math.max(1, 300 - cleared * 25);
     $('#stat-cleared').textContent = cleared;
@@ -143,11 +166,13 @@
   });
 
   // ---------- Settings ----------
-  $('#btn-settings').addEventListener('click', () => {
+  function openSettings() {
     openDialog(`
       <h2>設定</h2>
       <p>所有進度都儲存在此瀏覽器中（localStorage）。</p>
-      <label class="muted" for="set-name" style="font-size:13px">前鋒名稱</label>
+      <span class="field-label">頭像</span>
+      <div class="avatar-picker" id="set-avatars" role="radiogroup" aria-label="選擇頭像">${avatarPickerHtml(Store.get().avatar)}</div>
+      <label class="field-label" for="set-name">前鋒名稱</label>
       <div class="welcome-form"><div class="row"><input id="set-name" maxlength="18" value="${esc(Store.get().name)}"></div></div>
       <div class="setting-row">
         <span>中文翻譯模式<small class="muted">在每個英文句子下方顯示中譯</small></span>
@@ -159,7 +184,8 @@
       </div>`);
     $('#set-save').onclick = () => {
       const n = $('#set-name').value.trim();
-      if (n) Store.update(s => { s.name = n; });
+      const avatar = pickedAvatar($('#set-avatars'));
+      Store.update(s => { if (n) s.name = n; s.avatar = avatar; });
       closeDialog(); renderHome();
     };
     $('#set-reset').onclick = e => {
@@ -168,7 +194,9 @@
       e.target.textContent = '再按一次以清除所有進度';
       e.target.style.color = 'var(--red)';
     };
-  });
+  }
+  $('#btn-settings').addEventListener('click', openSettings);
+  $('#profile-avatar').addEventListener('click', openSettings);
 
   // ---------- Course ----------
   function renderCourse(id) {
@@ -255,13 +283,22 @@
 
   // ---------- Match ----------
   let game = null, match = null;
+  const questionSeconds = id => Math.round(Math.max(12, 22 - id * 0.8));
+  const reviewCount = id => id > 1 ? Math.min(4, Math.floor(id / 2) + 1) : 0;
 
   function buildDeck(id) {
     const tag = l => l.questions.map(q => ({ ...q, tense: l.zh.tense }));
     const own = tag(levelById(id));
     const review = LEVELS.filter(l => l.id < id).flatMap(tag);
     // Mostly the current tense, with a few review questions from earlier levels mixed in.
-    return shuffle(own.concat(shuffle(review).slice(0, Math.min(4, Math.floor(id / 2) + 1))));
+    return shuffle(own.concat(shuffle(review).slice(0, reviewCount(id))));
+  }
+
+  function showHint() {
+    const hint = $('#match-hint');
+    hint.style.opacity = 1;
+    clearTimeout(showHint.t);
+    showHint.t = setTimeout(() => { hint.style.opacity = 0; }, 6000);
   }
 
   function startMatch(id) {
@@ -272,9 +309,7 @@
     $('#hud-level').textContent = `LV ${id} · ${L.zh.tense}`;
     $('#hud-need').textContent = GOALS_NEEDED;
     $('#nogl').hidden = true;
-    const hint = $('#match-hint');
-    hint.style.opacity = 1;
-    setTimeout(() => { hint.style.opacity = 0; }, 6000);
+    $('#match-hint').style.opacity = 0;
     updateHud();
     try {
       game = window.AOE_Game($('#stage'), {
@@ -295,10 +330,15 @@
       $('#nogl').hidden = false;
     }
     Store.update(() => { Store.level(id).attempts++; });
+    if (!game) return;
+    // First visit to this level's challenge opens its tutorial; the ? button reopens it later.
+    if (!Store.level(id).tutorialSeen) openTutorial();
+    else showHint();
   }
 
   function endGame() {
     if (game) { game.destroy(); game = null; }
+    closeTutorial(false);
     stopTimer();
     $('#question-modal').hidden = true;
     match = null;
@@ -350,12 +390,14 @@
     fb.textContent = kind === 'shot' ? '選出正確的時態，騙過門將！' : '選出正確的時態，突破防守！';
     fb.className = 'qm-feedback';
     const box = $('#qm-options');
+    const next = $('#qm-next');
+    next.hidden = true;
     box.innerHTML = opts.map((o, i) => `<button class="opt" data-v="${esc(o)}"><kbd>${i + 1}</kbd>${esc(o)}</button>`).join('');
     applyZh();
     modal.hidden = false;
 
     let answered = false;
-    const limit = Math.max(12, 22 - match.id * 0.8) * 1000;
+    const limit = questionSeconds(match.id) * 1000;
     const started = performance.now();
     const bar = $('#qm-timer');
     const tick = now => {
@@ -366,10 +408,11 @@
     };
     timerRaf = requestAnimationFrame(tick);
 
+    let goNext = null;
     function answer(btn) {
       if (answered || !match) return;
       answered = true;
-      stopTimer();
+      cancelAnimationFrame(timerRaf);
       const correct = !!btn && btn.dataset.v === q.opts[0];
       box.querySelectorAll('.opt').forEach(b => {
         b.disabled = true;
@@ -385,7 +428,12 @@
       if (kind === 'shot' && correct) match.goals++;
       if (!correct) match.hearts--;
 
-      setTimeout(() => {
+      let continued = false;
+      const proceed = () => {
+        if (continued) return;
+        continued = true;
+        stopTimer();
+        next.hidden = true;
         modal.hidden = true;
         if (!match) return;
         updateHud();
@@ -395,7 +443,16 @@
           setTimeout(() => finishMatch(match.goals >= GOALS_NEEDED), kind === 'shot' ? 2000 : 900);
           if (kind !== 'shot') game && game.freeze(true);
         }
-      }, correct ? 900 : 2200);
+      };
+      // A correct answer waits for 下一個 so the explanation can be read; a wrong one moves on by itself.
+      if (correct) {
+        goNext = proceed;
+        next.onclick = proceed;
+        next.hidden = false;
+        next.focus();
+      } else {
+        setTimeout(proceed, 2200);
+      }
     }
 
     box.onclick = e => { const b = e.target.closest('.opt'); if (b) answer(b); };
@@ -403,6 +460,10 @@
       if (e.key.toLowerCase() === 't') {
         Store.update(s => { s.showZh = !s.showZh; });
         return applyZh();
+      }
+      if (answered) {
+        if (goNext && ['Enter', ' ', 'ArrowRight'].includes(e.key)) { e.preventDefault(); goNext(); }
+        return;
       }
       const n = parseInt(e.key, 10);
       const b = box.querySelectorAll('.opt')[n - 1];
@@ -450,6 +511,118 @@
         <button class="btn btn-ghost" data-go="#/home">地圖</button>
       </div>`);
   }
+
+  // ---------- Challenge tutorial ----------
+  function tutorialSteps(L) {
+    const id = L.id, Z = L.zh;
+    const touch = document.body.classList.contains('touch');
+    const review = reviewCount(id);
+    const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
+    return [
+      {
+        title: '本關任務',
+        body: `<p class="tut-lead">第 ${id} 關 · <b>${esc(Z.tense)}</b><br>對手：<b>${esc(Z.opponent)}</b></p>
+          <div class="result-stats tut-stats">
+            ${stat(GOALS_NEEDED + ' 球', '目標')}${stat(`<span class="hearts">${'♥'.repeat(MAX_HEARTS)}</span>`, '生命')}${stat(game.defenders + ' 人', '後衛')}
+            ${stat(questionSeconds(id) + ' 秒', '答題時間')}${stat(L.questions.length, '本關題目')}${stat(review || '—', '複習題')}
+          </div>
+          <p>在失去 ${MAX_HEARTS} 顆心之前踢進 ${GOALS_NEEDED} 球就能通關，並解鎖下一關。結束時剩幾顆心，就得到幾顆星。</p>
+          ${review ? `<p class="muted">本關會混入 ${review} 題前面關卡的時態複習題。</p>` : ''}`
+      },
+      {
+        title: '操作方式',
+        body: touch
+          ? `<div class="tut-visual"><div class="tut-joy"><span></span></div></div>
+             <p>用畫面<b>左下角的搖桿</b>移動前鋒。球會自動黏在你的腳下，帶球往上方的球門前進。</p>`
+          : `<div class="tut-visual"><div class="keys"><kbd class="k-w">W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div><span class="muted">或</span><div class="keys"><kbd class="k-w">↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></div></div>
+             <p>用 <b>WASD</b> 或<b>方向鍵</b>移動前鋒。球會自動黏在你的腳下，帶球往上方的球門前進。</p>`
+      },
+      {
+        title: '對決與射門',
+        body: `<div class="tut-cards">
+            <div class="tut-card"><div class="qm-kind">對決！</div><p>後衛靠近你時觸發。</p><p class="good">答對 → 突破，後衛倒地</p><p class="bad">答錯 → 球被抄走，扣 1 ♥</p></div>
+            <div class="tut-card"><div class="qm-kind shoot">射門！</div><p>帶球衝進禁區時觸發。</p><p class="good">答對 → 進球！</p><p class="bad">答錯 → 被門將撲出，扣 1 ♥</p></div>
+          </div>
+          <ul class="tut-tips">
+            <li>時間條歸零也算答錯，要在 ${questionSeconds(id)} 秒內作答。</li>
+            <li>答對後先讀解說，再按「<b>下一個</b>」繼續${touch ? '' : '（或按 Enter）'}。</li>
+            ${touch ? '' : '<li>可以用數字鍵 <kbd>1</kbd>–<kbd>4</kbd> 作答。</li>'}
+            <li>看不懂句子？打開「<b>中譯</b>」${touch ? '' : '或按 <kbd>T</kbd> '}顯示中文翻譯。</li>
+          </ul>`
+      },
+      {
+        title: '心流 FLOW',
+        body: `<div class="tut-visual"><span class="tut-orb"></span><span class="tut-orb"></span><span class="tut-orb"></span><span class="tut-arrow">→</span><div class="flow full"><div style="width:100%"></div></div></div>
+          <p>收集球場上發光的<b>綠色光球</b>來累積心流（3 顆集滿）。</p>
+          <p>心流全滿時：前鋒<b>加速</b>，而且下一題只剩<b>兩個選項</b>（二選一）。</p>`
+      },
+      {
+        title: '本關重點',
+        body: `<p class="tut-lead"><b>${esc(Z.tense)}</b> <span class="muted">${esc(L.tense)}</span></p>
+          <div class="formula pos"><div class="k">肯定句</div><div class="v">${esc(L.formula.positive)}</div></div>
+          <div class="signal-label">關鍵字</div>
+          <div class="signal-chips">${L.signals.map(sg => `<span>${esc(sg)}</span>`).join('')}</div>
+          <div class="example tut-example">${sentenceHtml(bold(L.examples[0]), Z.examples[0])}</div>
+          <p class="muted">準備好了嗎？用正確的時態踢進 ${GOALS_NEEDED} 球吧！</p>`
+      }
+    ];
+  }
+
+  let tut = null;
+  function openTutorial() {
+    if (!match || !game) return;
+    game.freeze(true);
+    tut = { steps: tutorialSteps(levelById(match.id)), i: 0 };
+    renderTutorial();
+    $('#tutorial').hidden = false;
+    window.addEventListener('keydown', tutorialKeys);
+  }
+
+  function renderTutorial() {
+    const { steps, i } = tut, step = steps[i], last = i === steps.length - 1;
+    $('#tutorial-card').innerHTML = `
+      <div class="tut-head"><span class="tut-step">挑戰教學 · ${i + 1} / ${steps.length}</span><button class="btn btn-ghost tut-skip" data-tut="start">跳過</button></div>
+      <h2>${step.title}</h2>
+      <div class="tut-body">${step.body}</div>
+      <div class="tut-dots">${steps.map((_, j) => `<span class="${j === i ? 'on' : ''}"></span>`).join('')}</div>
+      <div class="actions">
+        ${i ? '<button class="btn" data-tut="prev">← 上一步</button>' : ''}
+        ${last ? '<button class="btn btn-neon" data-tut="start">開始比賽 ⚽</button>' : '<button class="btn btn-primary" data-tut="next">下一步 →</button>'}
+      </div>`;
+    applyZh();
+  }
+
+  function tutorialGo(action) {
+    if (!tut) return;
+    if (action === 'start') return closeTutorial(true);
+    tut.i = Math.max(0, Math.min(tut.steps.length - 1, tut.i + (action === 'next' ? 1 : -1)));
+    renderTutorial();
+  }
+
+  function tutorialKeys(e) {
+    const action = { Enter: 'next', ArrowRight: 'next', ArrowLeft: 'prev', Escape: 'start' }[e.key];
+    // A focused tutorial button already handles Enter as a click.
+    if (!action || (e.key === 'Enter' && e.target.closest('#tutorial button'))) return;
+    e.preventDefault();
+    tutorialGo(action === 'next' && tut.i === tut.steps.length - 1 ? 'start' : action);
+  }
+
+  function closeTutorial(resume) {
+    window.removeEventListener('keydown', tutorialKeys);
+    $('#tutorial').hidden = true;
+    if (!tut) return;
+    tut = null;
+    if (!resume || !match) return;
+    Store.update(() => { Store.level(match.id).tutorialSeen = true; });
+    game && game.freeze(false);
+    showHint();
+  }
+
+  $('#tutorial').addEventListener('click', e => {
+    const b = e.target.closest('[data-tut]');
+    if (b) tutorialGo(b.dataset.tut);
+  });
+  $('#btn-help').addEventListener('click', () => { if (match && !match.over) openTutorial(); });
 
   $('#btn-quit').addEventListener('click', () => {
     if (!match || match.over) return go('#/home');

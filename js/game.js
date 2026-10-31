@@ -451,6 +451,7 @@ window.AOE_Game = function (container, opts) {
   raf = requestAnimationFrame(frame);
 
   return {
+    defenders: defenderCount,
     setBoost(on) { boost = on; },
     freeze(on) { frozen = on; },
     destroy() {

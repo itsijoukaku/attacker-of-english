@@ -246,6 +246,28 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: rgba(6, 11, 26, .6); }
 .setting-row small { display: block; font-size: 12px; margin-top: 2px; }
 
+/* ---------- Avatars ---------- */
+.field-label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 8px; text-align: left; }
+.avatar-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.avatar-option {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 8px;
+  border-radius: 14px; background: var(--panel); border: 2px solid transparent; transition: border-color .15s, transform .15s;
+}
+.avatar-option:hover { transform: translateY(-2px); }
+.avatar-option[aria-checked="true"] { border-color: var(--cyan); box-shadow: 0 0 18px rgba(0, 224, 255, .35); }
+.avatar-img { display: block; width: 100%; max-width: 72px; aspect-ratio: 1; border-radius: 12px; overflow: hidden; }
+.avatar-img img, .profile-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.avatar-name { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.profile-avatar {
+  flex: none; width: 112px; height: 112px; padding: 0; border-radius: 22px; overflow: hidden; position: relative;
+  border: 2px solid var(--cyan); box-shadow: 0 0 30px rgba(0, 224, 255, .35); background: var(--bg);
+}
+.profile-avatar::after {
+  content: '✎'; position: absolute; right: 6px; bottom: 6px; width: 24px; height: 24px; border-radius: 8px;
+  display: grid; place-items: center; font-size: 13px; background: rgba(6, 11, 26, .8); color: var(--cyan); opacity: 0; transition: opacity .2s;
+}
+.profile-avatar:hover::after, .touch .profile-avatar::after { opacity: 1; }
+
 /* ---------- Options (shared by drills & match) ---------- */
 .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .opt {
@@ -334,6 +356,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .qm-text .blank { color: var(--cyan); }
 .qm-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .qm-foot .zh-toggle { flex: none; }
+.qm-next { display: flex; width: 100%; margin-top: 14px; font-size: 16px; animation: pop .2s ease-out; }
 .qm-feedback { min-height: 1.4em; margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .qm-feedback.good { color: var(--neon); }
 .qm-feedback.bad { color: #ff8094; }
@@ -351,12 +374,61 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .result-stats b { display: block; font-family: var(--display); font-size: 28px; font-weight: 900; }
 .result-stats span { font-size: 11px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
 
+/* ---------- Challenge tutorial ---------- */
+.tutorial-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.tut-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.tut-step { font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--cyan); }
+.tut-skip { padding: .4em .9em; font-size: 13px; }
+.tutorial-card h2 { font-size: 38px; }
+.tut-body { min-height: 230px; }
+.tut-body p { margin: 10px 0; }
+.tut-body b { color: var(--text); }
+.tut-lead { font-size: 17px; color: var(--text) !important; line-height: 1.6; }
+.tut-stats { grid-template-columns: repeat(3, 1fr); }
+.tut-stats b { font-size: 24px; }
+.tut-stats .hearts { color: var(--red); font-size: inherit; letter-spacing: 2px; text-transform: none; }
+.tut-visual { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 18px; margin: 10px 0; border-radius: 14px; background: rgba(6, 11, 26, .6); }
+.keys { display: grid; grid-template-columns: repeat(3, 36px); gap: 4px; }
+.keys kbd, .tut-tips kbd {
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 7px;
+  font: 700 13px var(--body); color: var(--text); background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 2px 0 rgba(0, 0, 0, .4);
+}
+.keys kbd { height: 36px; }
+.keys .k-w { grid-column: 2; grid-row: 1; }
+.keys kbd:not(.k-w) { grid-row: 2; }
+.tut-joy { width: 90px; height: 90px; border-radius: 50%; border: 2px solid rgba(120, 170, 255, .35); background: rgba(31, 123, 255, .12); display: grid; place-items: center; }
+.tut-joy span { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #6aa8ff, var(--blue)); animation: joy 1.6s ease-in-out infinite; }
+@keyframes joy { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(0, -18px); } 50% { transform: translate(16px, -8px); } 75% { transform: translate(-14px, -12px); } }
+.tut-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tut-card { padding: 14px; border-radius: 14px; background: rgba(6, 11, 26, .6); border: 1px solid var(--line); }
+.tut-card .qm-kind { font-size: 30px; }
+.tut-card p { margin: 6px 0 0; font-size: 14px; }
+.tut-card .good { color: var(--neon); }
+.tut-card .bad { color: #ff8094; }
+.tut-tips { margin: 14px 0 0; padding-left: 20px; line-height: 1.9; color: var(--muted); font-size: 14px; }
+.tut-orb { width: 22px; height: 22px; border-radius: 50%; background: var(--neon); box-shadow: 0 0 16px var(--neon); animation: bob 1.4s ease-in-out infinite alternate; }
+.tut-orb:nth-child(2) { animation-delay: .2s; }
+.tut-orb:nth-child(3) { animation-delay: .4s; }
+@keyframes bob { to { transform: translateY(-6px); } }
+.tut-arrow { color: var(--muted); font-size: 20px; }
+.tut-body .formula { margin-top: 8px; }
+.tut-example { margin-top: 12px; }
+.tut-dots { display: flex; justify-content: center; gap: 6px; margin-top: 16px; }
+.tut-dots span { width: 8px; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .2); transition: width .2s; }
+.tut-dots span.on { width: 22px; background: var(--cyan); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .profile-card { padding: 16px; gap: 14px; }
   .rank { width: 86px; height: 86px; border-radius: 18px; }
   .rank-num { font-size: 34px; }
   .rank-label { font-size: 8px; letter-spacing: .08em; }
+  .profile-card { gap: 10px; padding: 14px; }
+  .rank { width: 72px; height: 72px; border-radius: 16px; }
+  .rank-num { font-size: 28px; }
+  .profile-meta h2 { font-size: 24px; }
+  .stat-row { gap: 2px 10px; font-size: 12px; }
+  .profile-avatar { width: 72px; height: 72px; border-radius: 16px; }
   .profile-meta h2 { font-size: 28px; }
   .formula-grid { grid-template-columns: 1fr; }
   .options { grid-template-columns: 1fr; }
@@ -365,5 +437,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .flow { width: 70px; }
   .qm-text { font-size: 17px; }
   .result-stats b { font-size: 24px; }
+  .tut-cards { grid-template-columns: 1fr; }
+  .tut-stats b { font-size: 20px; }
+  .tutorial-card h2 { font-size: 32px; }
   .filters { gap: 10px; }
 }

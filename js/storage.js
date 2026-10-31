@@ -4,6 +4,7 @@ window.AOE_Store = (function () {
 
   const fresh = () => ({
     name: '',
+    avatar: 'isagi',     // id from AOE_AVATARS
     egoPoints: 0,
     levels: {},          // id -> { drills: {idx: true}, courseDone, cleared, stars, bestGoals, attempts }
     filters: { category: 'all', status: 'all' },
@@ -48,9 +49,9 @@ window.AOE_Store = (function () {
   function update(fn) { fn(state); save(); }
 
   function reset() {
-    const name = state.name;
+    const { name, avatar } = state;
     state = fresh();
-    state.name = name;
+    Object.assign(state, { name, avatar });
     save();
   }
 
